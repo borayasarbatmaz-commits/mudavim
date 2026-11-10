@@ -1,0 +1,78 @@
+name: Veri çek, derle, yayınla
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1" # her pazartesi veriyi tazele
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: OpenStreetMap verisini çek
+        id: osm
+        continue-on-error: true
+        run: |
+          mkdir -p data_raw
+          cd pipeline && python fetch_osm.py ../data_raw/osm.json
+
+      - name: Overture (Foursquare + Meta + Microsoft) verisini çek
+        id: overture
+        continue-on-error: true
+        run: |
+          pip install --quiet overturemaps
+          BBOX=$(python -c "import sys; sys.path.insert(0,'pipeline'); from region import BBOX as b; print(f'{b[1]},{b[0]},{b[3]},{b[2]}')")
+          echo "bbox: $BBOX"
+          timeout 1500 overturemaps download --bbox=$BBOX -f geojson --type=place -o data_raw/overture.geojson
+          ls -la data_raw
+
+      - name: Veriyi birleştir
+        run: |
+          mkdir -p public/data
+          if [ -f data_raw/osm.json ]; then
+            cd pipeline && python build_places.py ../data_raw/osm.json ../data_raw/overture.geojson ../public/data/places.json
+          else
+            echo "OSM alınamadı, yayındaki son veri kullanılacak"
+            curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/places.json" -o public/data/places.json
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Uygulamayı derle
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

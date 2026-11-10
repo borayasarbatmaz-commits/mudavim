@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data_raw/
+public/data/places.json
+tests/*_fixture.*
+tests/places_fixture.json
+*.log
