@@ -13,10 +13,12 @@ import unicodedata
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 
-from categories import name_hint, osm_category, overture_category
+from categories import name_hint, osm_category, overture_category, strong_name
 from region import BBOX
 
 TR_MAP = str.maketrans("çğıöşüÇĞİÖŞÜâîû", "cgiosuCGIOSUaiu")
+# Overture'da sanayi bölgelerindeki şirketler ve dernekler perakende kategorilerine düşebiliyor
+NON_RETAIL = re.compile(r"(dernegi|vakfi|holding|kooperatif|anonim sirketi|\ba s$|fabrika|lojistik|insaat|muhendislik|danismanlik|okulu|koleji|kursu|\bosb\b)")
 STOP = {"ltd", "sti", "san", "tic", "ve", "a.s", "as", "subesi", "sube", "magazasi", "magaza", "market", "the"}
 
 
@@ -118,8 +120,11 @@ def load_overture(path):
                 break
         if not cat:
             continue
+        strong = strong_name(name)
         hint = name_hint(name)
-        if hint and cat in ("restoran", "fastfood"):
+        if strong:
+            cat = strong
+        elif hint and cat in ("restoran", "fastfood", "lokanta"):
             cat = hint
         addrs = maybe_json(pr.get("addresses")) or []
         addr = addrs[0].get("freeform", "") if addrs and isinstance(addrs[0], dict) else ""
@@ -139,7 +144,7 @@ def merge(osm, ov):
     grid = {}
     for p in osm:
         grid.setdefault((int(p["lat"] / cell), int(p["lon"] / cell)), []).append(p)
-    added, matched, low = 0, 0, 0
+    added, matched, low, corp = 0, 0, 0, 0
     merged = list(osm)
     for q in ov:
         ci, cj = int(q["lat"] / cell), int(q["lon"] / cell)
@@ -164,10 +169,13 @@ def merge(osm, ov):
         if q["conf"] < 0.55:
             low += 1
             continue
+        if NON_RETAIL.search(norm(q["name"]).replace("sirketi", " sirketi")) or NON_RETAIL.search((q["name"] or "").translate(TR_MAP).lower()):
+            corp += 1
+            continue
         merged.append(q)
         grid.setdefault((ci, cj), []).append(q)
         added += 1
-    print(f"Overture: {matched} eslesti, {added} yeni eklendi, {low} dusuk guvenle atlandi")
+    print(f"Overture: {matched} eslesti, {added} yeni eklendi, {low} dusuk guvenle, {corp} sirket/dernek diye atlandi")
     return merged
 
 

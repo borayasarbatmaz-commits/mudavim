@@ -66,7 +66,7 @@ export function search(q, from, { sort = 'onerilen', openNow = false } = {}) {
       const sc = inf.score?.score;
       const notes = o.confirms.map((c) => c.note).filter(Boolean);
       const vHit = vt.length ? notes.find((n) => vt.every((w) => norm(n).includes(w))) : null;
-      const rank = inf.level.lv * 1.2 * fresh + (sc ? (sc - 3.6) * 0.9 : 0) + 1.5 + (vHit ? 1 : 0) - 0.9 * Math.log(1 + d / 1000);
+      const rank = inf.level.lv * 1.2 * fresh + (sc ? (sc - 3.6) * 0.9 : 0) + 1.5 + (vHit ? 1 : 0) - 1.6 * Math.log(1 + d / 1000);
       results.push({ kind: 'offer', place: pl, product: p, offer: o, inf, score: sc, d, rank, note: vHit || notes[notes.length - 1] || '', open: openState(pl) });
     }
     // Veri yoksa: kategoriden tahmin
@@ -76,7 +76,7 @@ export function search(q, from, { sort = 'onerilen', openNow = false } = {}) {
       const d = distance(lat, lon, pl.lat, pl.lon);
       if (d > 6000) continue;
       const ss = storeScore(pl.id)?.score;
-      const rank = 0.3 + (ss ? (ss - 3.6) * 0.4 : 0) - 0.9 * Math.log(1 + d / 1000) - (season ? 0 : 1.2) - p.cats.indexOf(pl.cat) * 0.15;
+      const rank = 0.3 + (ss ? (ss - 3.6) * 0.4 : 0) - 1.6 * Math.log(1 + d / 1000) - (season ? 0 : 1.2) - p.cats.indexOf(pl.cat) * 0.15;
       results.push({ kind: 'infer', place: pl, product: p, score: null, storeScore: ss, d, rank, season, open: openState(pl) });
     }
   }

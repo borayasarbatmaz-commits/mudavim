@@ -354,9 +354,11 @@ function recompute() {
   const myEntr = [...S.entrances.values()].filter((e) => e.u === 'me').length;
   for (const [u, s] of stats) {
     const user = S.users.get(u);
-    s.xp = (user?.baseXp || 0) + s.confirms * XP.confirm + s.photos * XP.photo + s.newPins * XP.newPin + s.rates * XP.rate +
+    // simüle kullanıcıların etkinliği yoğun üretildiği için XP'si ölçeklenir (yoksa herkes Efsane olur)
+    const k = user?.sim ? 0.02 : 1;
+    s.xp = (user?.baseXp || 0) + Math.round(k * (s.confirms * XP.confirm + s.photos * XP.photo + s.newPins * XP.newPin + s.rates * XP.rate +
       (s.longText || 0) * XP.longText + s.reports * XP.report + s.helpsAsked * XP.help + s.answers * XP.answer +
-      s.accepted * XP.answerAccepted + s.addedPlaces * XP.addPlace + (u === 'me' ? myEntr * XP.entrance : 0);
+      s.accepted * XP.answerAccepted + s.addedPlaces * XP.addPlace + (u === 'me' ? myEntr * XP.entrance : 0)));
   }
   for (const [u, s] of stats) s.helped = s.accepted + (S.users.get(u)?.baseHelped || 0);
   if (!stats.has('me')) st('me').xp = S.me?.bonusXp || 0;

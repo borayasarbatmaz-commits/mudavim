@@ -57,6 +57,8 @@ CUISINE_RULES = [
 
 
 def osm_category(tags):
+    if strong_name(tags.get("name")) == "cigkofte":
+        return "cigkofte"
     shop = tags.get("shop")
     if shop:
         return OSM_SHOP.get(shop)
@@ -81,12 +83,32 @@ def osm_category(tags):
 
 # İsimden ipucu (OSM'de cuisine etiketi çoğu zaman boş)
 NAME_HINTS = [
+    ("çiğköfte", "cigkofte"), ("çiğ köfte", "cigkofte"), ("cigkofte", "cigkofte"), ("cig kofte", "cigkofte"),
     ("pizza", "pizzaci"), ("kebap", "kebapci"), ("kebab", "kebapci"), ("ocakbaşı", "kebapci"),
     ("döner", "donerci"), ("doner", "donerci"), ("çorba", "corbaci"), ("corba", "corbaci"),
     ("pide", "pideci"), ("lahmacun", "pideci"), ("burger", "fastfood"), ("köfte", "kebapci"),
     ("lokanta", "lokanta"), ("ev yemek", "lokanta"), ("balık", "balikci_rest"), ("tatlı", "tatlici"),
     ("baklava", "tatlici"), ("künefe", "tatlici"), ("börek", "firin"), ("simit", "firin"),
 ]
+
+
+# İsimde açıkça geçen dükkan türü (Overture kategorisi yanlış olabildiği için önceliklidir)
+STRONG_NAME = [
+    ("çiğköfte", "cigkofte"), ("çiğ köfte", "cigkofte"), ("ev tekstil", "perde"), ("perde", "perde"),
+    ("eczane", "eczane"), ("kırtasiye", "kirtasiye"), ("hırdavat", "hirdavat"), ("nalbur", "yapi_market"),
+    ("manav", "manav"), ("kasap", "kasap"), ("şarküteri", "sarkuteri"), ("pastane", "pastane"), ("fırın", "firin"),
+    ("çiçek", "cicekci"), ("terzi", "terzi"), ("tuhafiye", "tuhafiye"), ("yedek parça", "oto_parca"),
+    ("tesisat", "tesisat"), ("kuruyemiş", "kuruyemis"), ("aktar", "kuruyemis"), ("kitap", "kitapci"),
+    ("züccaciye", "zuccaciye"), ("optik", "optik"), ("kuyumcu", "kuyumcu"), ("petshop", "petshop"), ("pet shop", "petshop"),
+]
+
+
+def strong_name(name):
+    n = (name or "").replace("İ", "i").replace("I", "ı").lower()
+    for key, cat in STRONG_NAME:
+        if key in n:
+            return cat
+    return None
 
 
 def name_hint(name):
