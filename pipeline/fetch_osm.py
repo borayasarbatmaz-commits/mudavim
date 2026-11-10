@@ -28,8 +28,11 @@ QUERY = f"""
   nwr["craft"~"^(tailor|shoemaker|key_cutter|upholsterer|dressmaker)$"]({BB});
 );
 out center tags;
-node["place"~"^(neighbourhood|suburb|quarter|village|town|city)$"]({BB});
-out tags;
+(
+  node["place"~"^(neighbourhood|suburb|quarter|village|town|city)$"]({BB});
+  rel["boundary"="administrative"]["admin_level"~"^(6|8|9|10)$"]({BB});
+);
+out center tags;
 """
 
 

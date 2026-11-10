@@ -5,3 +5,4 @@ public/data/places.json
 tests/*_fixture.*
 tests/places_fixture.json
 *.log
+__pycache__/

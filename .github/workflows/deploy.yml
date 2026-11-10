@@ -8,7 +8,7 @@ on:
     - cron: "17 3 * * 1" # her pazartesi veriyi tazele
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -46,12 +46,27 @@ jobs:
       - name: Veriyi birleştir
         run: |
           mkdir -p public/data
-          if [ -f data_raw/osm.json ]; then
-            cd pipeline && python build_places.py ../data_raw/osm.json ../data_raw/overture.geojson ../public/data/places.json
+          if [ -f data_raw/osm.json ] && (cd pipeline && python build_places.py ../data_raw/osm.json ../data_raw/overture.geojson ../public/data/places.json); then
+            echo "FRESH=1" >> "$GITHUB_ENV"
           else
-            echo "OSM alınamadı, yayındaki son veri kullanılacak"
-            curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/places.json" -o public/data/places.json
+            echo "Yeni veri üretilemedi, 'data' dalındaki son veri kullanılacak"
+            git fetch --depth 1 origin data
+            git show origin/data:places.json > public/data/places.json
           fi
+
+      - name: Veriyi 'data' dalına kaydet (yedek ve inceleme için)
+        if: env.FRESH == '1'
+        continue-on-error: true
+        run: |
+          tmp=$(mktemp -d)
+          cp public/data/places.json "$tmp/"
+          cd "$tmp"
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add places.json
+          git commit -q -m "Veri: $(date -u +%Y-%m-%d)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
 
       - uses: actions/setup-node@v4
         with:

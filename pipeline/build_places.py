@@ -64,10 +64,13 @@ def load_osm(path):
         lon = el.get("lon") or (el.get("center") or {}).get("lon")
         if lat is None or lon is None:
             continue
-        if tags.get("place"):
+        if tags.get("place") or tags.get("boundary") == "administrative":
             nm = tags.get("name:tr") or tags.get("name")
-            if nm:
-                localities.append({"name": nm, "kind": tags["place"], "lat": lat, "lon": lon})
+            kind = tags.get("place")
+            if tags.get("boundary") == "administrative":
+                kind = "town" if tags.get("admin_level") == "6" else "neighbourhood"
+            if nm and kind:
+                localities.append({"name": nm, "kind": kind, "lat": lat, "lon": lon})
             continue
         cat = osm_category(tags)
         if not cat:
@@ -169,8 +172,21 @@ def merge(osm, ov):
 
 
 def assign_localities(places, localities):
-    mah = [l for l in localities if l["kind"] in ("neighbourhood", "suburb", "quarter", "village")]
-    towns = [l for l in localities if l["kind"] in ("town", "city")]
+    def clean(n):
+        return re.sub(r"\s+(mahallesi|mah\.?|köyü|belediyesi)$", "", n.strip(), flags=re.I)
+
+    def dedupe(lst):
+        seen, out = set(), []
+        for l in lst:
+            l = {**l, "name": clean(l["name"])}
+            k = norm(l["name"])
+            if k and k not in seen:
+                seen.add(k)
+                out.append(l)
+        return out
+
+    mah = dedupe([l for l in localities if l["kind"] in ("neighbourhood", "suburb", "quarter", "village")])
+    towns = dedupe([l for l in localities if l["kind"] in ("town", "city")])
     districts = sorted({t["name"] for t in towns})
     d_index = {n: i for i, n in enumerate(districts)}
 
